@@ -12,6 +12,7 @@ fn buy_requires_buyer_authorization() {
     let buyer = Address::generate(&env);
 
     assert!(client.try_buy(&buyer).is_err());
+    assert_eq!(env.events().all().events().len(), 0);
 
     env.mock_all_auths();
     client.buy(&buyer);
@@ -41,9 +42,9 @@ fn buy_cannot_be_performed_twice() {
         client.try_buy(&second_buyer),
         Err(Ok(Error::AlreadyPurchased))
     );
+    assert_eq!(env.events().all().events().len(), 0);
     assert_eq!(client.holder(), first_buyer);
     assert_eq!(client.state(), State::Purchased);
-    assert_eq!(env.events().all().events().len(), 0);
 }
 
 #[test]
@@ -91,8 +92,8 @@ fn only_the_stored_holder_can_redeem() {
     client.buy(&holder);
 
     assert_eq!(client.try_redeem(&other_address), Err(Ok(Error::NotHolder)));
-    assert_eq!(client.state(), State::Purchased);
     assert_eq!(env.events().all().events().len(), 0);
+    assert_eq!(client.state(), State::Purchased);
 }
 
 #[test]
