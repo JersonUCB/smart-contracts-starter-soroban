@@ -23,6 +23,8 @@ pub enum Error {
     NotInitialized = 1,
     AlreadyPurchased = 2,
     AlreadyRedeemed = 3,
+    NotPurchased = 4,
+    NotHolder = 5,
 }
 
 #[contract]
@@ -46,6 +48,37 @@ impl EventPass {
         env.storage()
             .instance()
             .set(&DataKey::State, &State::Purchased);
+        Ok(())
+    }
+
+    pub fn redeem(env: Env, holder: Address) -> Result<(), Error> {
+        let state: State = env
+            .storage()
+            .instance()
+            .get(&DataKey::State)
+            .ok_or(Error::NotPurchased)?;
+
+        if state == State::Redeemed {
+            return Err(Error::AlreadyRedeemed);
+        }
+        if state != State::Purchased {
+            return Err(Error::NotPurchased);
+        }
+
+        let stored_holder: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Holder)
+            .ok_or(Error::NotPurchased)?;
+        holder.require_auth();
+
+        if stored_holder != holder {
+            return Err(Error::NotHolder);
+        }
+
+        env.storage()
+            .instance()
+            .set(&DataKey::State, &State::Redeemed);
         Ok(())
     }
 

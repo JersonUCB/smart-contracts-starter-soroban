@@ -34,3 +34,42 @@ fn buy_cannot_be_performed_twice() {
     assert_eq!(client.holder(), first_buyer);
     assert_eq!(client.state(), State::Purchased);
 }
+
+#[test]
+fn redeem_succeeds_after_buy() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(EventPass, ());
+    let client = EventPassClient::new(&env, &contract_id);
+    let holder = Address::generate(&env);
+
+    client.buy(&holder);
+    client.redeem(&holder);
+
+    assert_eq!(client.state(), State::Redeemed);
+}
+
+#[test]
+fn redeem_before_buy_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(EventPass, ());
+    let client = EventPassClient::new(&env, &contract_id);
+    let holder = Address::generate(&env);
+
+    assert_eq!(client.try_redeem(&holder), Err(Ok(Error::NotPurchased)));
+}
+
+#[test]
+fn redeem_cannot_be_performed_twice() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(EventPass, ());
+    let client = EventPassClient::new(&env, &contract_id);
+    let holder = Address::generate(&env);
+
+    client.buy(&holder);
+    client.redeem(&holder);
+
+    assert_eq!(client.try_redeem(&holder), Err(Ok(Error::AlreadyRedeemed)));
+}
