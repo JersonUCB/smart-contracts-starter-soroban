@@ -33,6 +33,8 @@ pub struct EventPass;
 #[contractimpl]
 impl EventPass {
     pub fn buy(env: Env, buyer: Address) -> Result<(), Error> {
+        buyer.require_auth();
+
         let state = env
             .storage()
             .instance()
@@ -43,7 +45,6 @@ impl EventPass {
             return Err(Error::AlreadyPurchased);
         }
 
-        buyer.require_auth();
         env.storage().instance().set(&DataKey::Holder, &buyer);
         env.storage()
             .instance()
@@ -52,6 +53,8 @@ impl EventPass {
     }
 
     pub fn redeem(env: Env, holder: Address) -> Result<(), Error> {
+        require_holder(&env, &holder)?;
+
         let state: State = env
             .storage()
             .instance()
@@ -63,17 +66,6 @@ impl EventPass {
         }
         if state != State::Purchased {
             return Err(Error::NotPurchased);
-        }
-
-        let stored_holder: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Holder)
-            .ok_or(Error::NotPurchased)?;
-        holder.require_auth();
-
-        if stored_holder != holder {
-            return Err(Error::NotHolder);
         }
 
         env.storage()
@@ -95,6 +87,21 @@ impl EventPass {
             .get(&DataKey::State)
             .ok_or(Error::NotInitialized)
     }
+}
+
+fn require_holder(env: &Env, holder: &Address) -> Result<(), Error> {
+    let stored_holder: Address = env
+        .storage()
+        .instance()
+        .get(&DataKey::Holder)
+        .ok_or(Error::NotPurchased)?;
+    holder.require_auth();
+
+    if stored_holder != *holder {
+        return Err(Error::NotHolder);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

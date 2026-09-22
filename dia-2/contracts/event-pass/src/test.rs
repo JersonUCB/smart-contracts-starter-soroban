@@ -50,6 +50,35 @@ fn redeem_succeeds_after_buy() {
 }
 
 #[test]
+fn redeem_requires_holder_authorization() {
+    let env = Env::default();
+    let contract_id = env.register(EventPass, ());
+    let client = EventPassClient::new(&env, &contract_id);
+    let holder = Address::generate(&env);
+
+    env.mock_all_auths();
+    client.buy(&holder);
+    env.set_auths(&[]);
+
+    assert!(client.try_redeem(&holder).is_err());
+}
+
+#[test]
+fn only_the_stored_holder_can_redeem() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(EventPass, ());
+    let client = EventPassClient::new(&env, &contract_id);
+    let holder = Address::generate(&env);
+    let other_address = Address::generate(&env);
+
+    client.buy(&holder);
+
+    assert_eq!(client.try_redeem(&other_address), Err(Ok(Error::NotHolder)));
+    assert_eq!(client.state(), State::Purchased);
+}
+
+#[test]
 fn redeem_before_buy_fails() {
     let env = Env::default();
     env.mock_all_auths();
