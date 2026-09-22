@@ -1,6 +1,8 @@
 #![no_std]
 
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env};
+use soroban_sdk::{
+    contract, contracterror, contractevent, contractimpl, contracttype, Address, Env,
+};
 
 #[contracttype]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -27,6 +29,18 @@ pub enum Error {
     NotHolder = 5,
 }
 
+#[contractevent(topics = ["pass_purchased"])]
+pub struct PassPurchased {
+    #[topic]
+    pub holder: Address,
+}
+
+#[contractevent(topics = ["pass_redeemed"])]
+pub struct PassRedeemed {
+    #[topic]
+    pub holder: Address,
+}
+
 #[contract]
 pub struct EventPass;
 
@@ -49,6 +63,7 @@ impl EventPass {
         env.storage()
             .instance()
             .set(&DataKey::State, &State::Purchased);
+        PassPurchased { holder: buyer }.publish(&env);
         Ok(())
     }
 
@@ -71,6 +86,7 @@ impl EventPass {
         env.storage()
             .instance()
             .set(&DataKey::State, &State::Redeemed);
+        PassRedeemed { holder }.publish(&env);
         Ok(())
     }
 

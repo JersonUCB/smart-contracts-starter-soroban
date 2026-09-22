@@ -1,5 +1,8 @@
-use super::{Error, EventPass, EventPassClient, State};
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use super::{Error, EventPass, EventPassClient, PassPurchased, PassRedeemed, State};
+use soroban_sdk::{
+    testutils::{Address as _, Events as _},
+    Address, Env, Event as _,
+};
 
 #[test]
 fn buy_requires_buyer_authorization() {
@@ -12,6 +15,13 @@ fn buy_requires_buyer_authorization() {
 
     env.mock_all_auths();
     client.buy(&buyer);
+    assert_eq!(
+        env.events().all(),
+        [PassPurchased {
+            holder: buyer.clone(),
+        }
+        .to_xdr(&env, &contract_id)]
+    );
     assert_eq!(client.holder(), buyer);
     assert_eq!(client.state(), State::Purchased);
 }
@@ -33,6 +43,7 @@ fn buy_cannot_be_performed_twice() {
     );
     assert_eq!(client.holder(), first_buyer);
     assert_eq!(client.state(), State::Purchased);
+    assert_eq!(env.events().all().events().len(), 0);
 }
 
 #[test]
@@ -46,6 +57,10 @@ fn redeem_succeeds_after_buy() {
     client.buy(&holder);
     client.redeem(&holder);
 
+    assert_eq!(
+        env.events().all(),
+        [PassRedeemed { holder }.to_xdr(&env, &contract_id)]
+    );
     assert_eq!(client.state(), State::Redeemed);
 }
 
@@ -61,6 +76,7 @@ fn redeem_requires_holder_authorization() {
     env.set_auths(&[]);
 
     assert!(client.try_redeem(&holder).is_err());
+    assert_eq!(env.events().all().events().len(), 0);
 }
 
 #[test]
@@ -76,6 +92,7 @@ fn only_the_stored_holder_can_redeem() {
 
     assert_eq!(client.try_redeem(&other_address), Err(Ok(Error::NotHolder)));
     assert_eq!(client.state(), State::Purchased);
+    assert_eq!(env.events().all().events().len(), 0);
 }
 
 #[test]
@@ -87,6 +104,7 @@ fn redeem_before_buy_fails() {
     let holder = Address::generate(&env);
 
     assert_eq!(client.try_redeem(&holder), Err(Ok(Error::NotPurchased)));
+    assert_eq!(env.events().all().events().len(), 0);
 }
 
 #[test]
@@ -101,4 +119,5 @@ fn redeem_cannot_be_performed_twice() {
     client.redeem(&holder);
 
     assert_eq!(client.try_redeem(&holder), Err(Ok(Error::AlreadyRedeemed)));
+    assert_eq!(env.events().all().events().len(), 0);
 }
